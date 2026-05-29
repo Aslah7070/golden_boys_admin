@@ -10,8 +10,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
-  // Bypassed admin login wall temporarily to allow direct team/player registration
-  const isAdmin = true; 
+  const isAdmin = cookieStore.get('admin_session')?.value === 'true'; 
 
   // Server-side redirect to login if not authenticated
   if (!isAdmin) {

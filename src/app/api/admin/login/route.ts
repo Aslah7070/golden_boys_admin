@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { connectToDatabase } from '@/lib/db';
+import Admin from '@/models/admin';
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
-    const adminEmail = process.env.ADMIN_EMAIL || 'aslah.c77@gmail.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Aslah@123';
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    if (email !== adminEmail || password !== adminPassword) {
+    await connectToDatabase();
+
+    const adminUser = await Admin.findOne({ email });
+
+    if (!adminUser || adminUser.password !== password) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
