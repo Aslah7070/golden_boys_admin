@@ -37,6 +37,30 @@ export default function PlayersAdminPage() {
   const [isCreatePlayerOpen, setIsCreatePlayerOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
+  // Cloudinary Uploader State
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  const handleUploadPhoto = async (file: File) => {
+    if (!editingPlayer) return;
+    setIsUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to upload photo');
+      setEditingPlayer({ ...editingPlayer, photo: data.url });
+      showToast('SUCCESS: Player photo uploaded!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Upload failed', 'error');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
   // Forms State - Create Player
   const [playerName, setPlayerName] = useState('');
   const [playerPosition, setPlayerPosition] = useState<PlayerPosition>('MIDFIELDER');
@@ -717,17 +741,44 @@ export default function PlayersAdminPage() {
                 </div>
               </div>
 
-              {/* Photo URL */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2">
-                  Photo URL
+              {/* Photo Upload Section (Cloudinary) */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  Player Photo (Cloudinary)
                 </label>
-                <input
-                  type="text"
-                  value={editingPlayer.photo || ''}
-                  onChange={(e) => setEditingPlayer({ ...editingPlayer, photo: e.target.value })}
-                  className="w-full h-11 bg-slate-950 border border-white/10 rounded-xl px-3 text-slate-200 text-xs font-medium focus:outline-none focus:border-amber-500"
-                />
+                <div className="flex items-center gap-3 bg-slate-950/60 border border-white/10 rounded-xl p-3">
+                  <div className="w-12 h-12 rounded-full border border-white/10 bg-slate-900 shrink-0 overflow-hidden flex items-center justify-center relative">
+                    {isUploadingPhoto ? (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : null}
+                    <img 
+                      src={editingPlayer.photo || '/players/default.png'} 
+                      alt="Player preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      id="edit-player-photo-upload"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadPhoto(file);
+                      }}
+                    />
+                    <label 
+                      htmlFor="edit-player-photo-upload"
+                      className="inline-flex items-center justify-center px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-all cursor-pointer"
+                    >
+                      {isUploadingPhoto ? 'Uploading...' : 'Choose Photo File'}
+                    </label>
+                    <p className="text-[9px] text-slate-500 mt-1">Upload player photo. Cloudinary optimized.</p>
+                  </div>
+                </div>
               </div>
 
               {/* Auction Status Sync */}
