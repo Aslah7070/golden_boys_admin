@@ -43,6 +43,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Bid amount (${bid}) must be greater than or equal to the base price (${player.basePrice})` }, { status: 400 });
     }
 
+    // Enforce 10 player limit and minimum reserved balance for remaining slots
+    const currentPlayers = team.buyedPlayers.length;
+    if (currentPlayers >= 10) {
+      return NextResponse.json({ error: 'Team already has 10 players. Cannot buy more.' }, { status: 400 });
+    }
+    
+    const remainingSlotsAfterThis = 10 - (currentPlayers + 1);
+    const requiredReservedBalance = remainingSlotsAfterThis * 50;
+    const maxAllowedBid = team.balance - requiredReservedBalance;
+
+    if (bid > maxAllowedBid) {
+      return NextResponse.json({ 
+        error: `Bid rejected! Maximum allowed bid is ₹${maxAllowedBid}. The team needs to reserve ₹${requiredReservedBalance} for their remaining ${remainingSlotsAfterThis} players.` 
+      }, { status: 400 });
+    }
+
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
