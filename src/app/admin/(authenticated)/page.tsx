@@ -15,7 +15,8 @@ import {
   UserX,
   Phone,
   MapPin,
-  Calendar
+  Calendar,
+  Search
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -27,6 +28,12 @@ export default function AdminPage() {
   const [biddingTeamId, setBiddingTeamId] = useState('');
   const [bidAmount, setBidAmount] = useState<number>(0);
   const [biddingError, setBiddingError] = useState('');
+
+  // Live Auction Filter States
+  const [playerSearch, setPlayerSearch] = useState('');
+  const [playerPositionFilter, setPlayerPositionFilter] = useState('');
+  const [playerCategoryFilter, setPlayerCategoryFilter] = useState('');
+  const [playerStatusFilter, setPlayerStatusFilter] = useState<'all' | 'sold' | 'unsold'>('unsold');
 
   // Query - Fetch all teams
   const { data: teams, isLoading: isLoadingTeams } = useQuery<Team[]>({
@@ -41,6 +48,18 @@ export default function AdminPage() {
   });
 
   const unsoldPlayers = players?.filter((p) => !p.isSold) || [];
+
+  const filteredPlayersList = players?.filter(player => {
+    const pName = player.playerName || player.name || 'Unknown Player';
+    const matchesSearch = pName.toLowerCase().includes(playerSearch.toLowerCase());
+    const matchesPosition = !playerPositionFilter || player.position === playerPositionFilter;
+    const matchesCategory = !playerCategoryFilter || player.category === playerCategoryFilter;
+    const isSoldState = player.isSold || !!player.team || !!player.soldTo;
+    const matchesStatus = playerStatusFilter === 'all' || 
+      (playerStatusFilter === 'sold' && isSoldState) || 
+      (playerStatusFilter === 'unsold' && !isSoldState);
+    return matchesSearch && matchesPosition && matchesCategory && matchesStatus;
+  }) || [];
 
   // Mutation - Buy Player (Auction)
   const buyMutation = useMutation({
@@ -154,13 +173,69 @@ export default function AdminPage() {
       {/* Main Auction Board */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Unsold Players List */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-5">
           <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
             <span>Available Players in Auction Pool</span>
             <span className="text-xs bg-amber-500/10 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/20 font-mono">
-              {unsoldPlayers.length} Left
+              {filteredPlayersList.length} Found
             </span>
           </h2>
+
+          {/* Dynamic Auction Filter Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-950/40 p-4 rounded-xl border border-white/5">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search player..."
+                value={playerSearch}
+                onChange={(e) => setPlayerSearch(e.target.value)}
+                className="w-full h-9 bg-slate-950 border border-white/10 rounded-lg pl-9 pr-3 text-slate-200 text-xs font-medium focus:outline-none focus:border-amber-500 transition-colors"
+              />
+            </div>
+
+            <div>
+              <select
+                value={playerPositionFilter}
+                onChange={(e) => setPlayerPositionFilter(e.target.value)}
+                className="w-full h-9 bg-slate-950 border border-white/10 rounded-lg px-2.5 text-slate-300 text-[11px] font-semibold focus:outline-none focus:border-amber-500"
+              >
+                <option value="">All Positions</option>
+                <option value="GOALKEEPER">Goalkeeper</option>
+                <option value="DEFENDER">Defender</option>
+                <option value="MIDFIELDER">Midfielder</option>
+                <option value="LEFT_WING">Left Wing</option>
+                <option value="RIGHT_WING">Right Wing</option>
+                <option value="STRIKER">Striker</option>
+              </select>
+            </div>
+
+            <div>
+              <select
+                value={playerCategoryFilter}
+                onChange={(e) => setPlayerCategoryFilter(e.target.value)}
+                className="w-full h-9 bg-slate-950 border border-white/10 rounded-lg px-2.5 text-slate-300 text-[11px] font-semibold focus:outline-none focus:border-amber-500"
+              >
+                <option value="">All Categories</option>
+                <option value="GK">GK</option>
+                <option value="ICON">ICON</option>
+                <option value="YOUNG">YOUNG</option>
+                <option value="LEGEND">LEGEND</option>
+              </select>
+            </div>
+
+            <div>
+              <select
+                value={playerStatusFilter}
+                onChange={(e) => setPlayerStatusFilter(e.target.value as any)}
+                className="w-full h-9 bg-slate-950 border border-white/10 rounded-lg px-2.5 text-slate-300 text-[11px] font-semibold focus:outline-none focus:border-amber-500"
+              >
+                <option value="unsold">Unsold Only</option>
+                <option value="sold">Sold Only</option>
+                <option value="all">All States</option>
+              </select>
+            </div>
+          </div>
 
           {isLoadingPlayers ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -168,17 +243,17 @@ export default function AdminPage() {
                 <div key={n} className="h-24 bg-slate-900/50 border border-white/5 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : unsoldPlayers.length === 0 ? (
+          ) : filteredPlayersList.length === 0 ? (
             <div className="p-12 text-center glass-card rounded-2xl border-white/5">
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
                 <Check className="w-6 h-6" />
               </div>
-              <p className="text-base text-slate-200 font-bold">All players have been sold!</p>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">There are no unsold players left in the tournament pool. All team rosters are complete.</p>
+              <p className="text-base text-slate-200 font-bold">No players found</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Try adjusting your filters or search terms.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {unsoldPlayers.map((player) => (
+              {filteredPlayersList.map((player) => (
                 <div 
                   key={player._id} 
                   className={`glass-card rounded-xl p-4 border flex justify-between items-center transition-all ${

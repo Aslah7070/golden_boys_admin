@@ -39,6 +39,27 @@ export default function PlayersAdminPage() {
 
   // Cloudinary Uploader State
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isUploadingCreatePhoto, setIsUploadingCreatePhoto] = useState(false);
+
+  const handleUploadCreatePhoto = async (file: File) => {
+    setIsUploadingCreatePhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to upload photo');
+      setPlayerPhoto(data.url);
+      showToast('SUCCESS: Player photo uploaded!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Upload failed', 'error');
+    } finally {
+      setIsUploadingCreatePhoto(false);
+    }
+  };
 
   const handleUploadPhoto = async (file: File) => {
     if (!editingPlayer) return;
@@ -551,8 +572,8 @@ export default function PlayersAdminPage() {
                     <input
                       type="number"
                       required
-                      min={1000}
-                      step={1000}
+                      min={50}
+                      step={50}
                       value={playerBasePrice || ''}
                       onChange={(e) => setPlayerBasePrice(Number(e.target.value))}
                       className="w-full h-11 bg-slate-950 border border-white/10 rounded-xl pl-9 pr-3 text-slate-200 text-sm font-bold focus:outline-none focus:border-amber-500"
@@ -561,18 +582,44 @@ export default function PlayersAdminPage() {
                 </div>
               </div>
 
-              {/* Photo URL */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2">
-                  Photo URL (Optional)
+              {/* Photo Upload Section (Cloudinary) */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  Player Photo (Cloudinary - Optional)
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. /players/sahal.png (Leave blank for fallback)"
-                  value={playerPhoto}
-                  onChange={(e) => setPlayerPhoto(e.target.value)}
-                  className="w-full h-11 bg-slate-950 border border-white/10 rounded-xl px-3 text-slate-200 text-xs font-medium focus:outline-none focus:border-amber-500"
-                />
+                <div className="flex items-center gap-3 bg-slate-950/60 border border-white/10 rounded-xl p-3">
+                  <div className="w-12 h-12 rounded-full border border-white/10 bg-slate-900 shrink-0 overflow-hidden flex items-center justify-center relative">
+                    {isUploadingCreatePhoto ? (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : null}
+                    <img 
+                      src={playerPhoto || '/players/default.png'} 
+                      alt="Player preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      id="create-player-photo-upload"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadCreatePhoto(file);
+                      }}
+                    />
+                    <label 
+                      htmlFor="create-player-photo-upload"
+                      className="inline-flex items-center justify-center px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-all cursor-pointer"
+                    >
+                      {isUploadingCreatePhoto ? 'Uploading...' : 'Choose Photo File'}
+                    </label>
+                    <p className="text-[9px] text-slate-500 mt-1">Upload player photo. Cloudinary optimized.</p>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2 flex gap-3">
@@ -731,8 +778,8 @@ export default function PlayersAdminPage() {
                     <input
                       type="number"
                       required
-                      min={0}
-                      step={1000}
+                      min={50}
+                      step={50}
                       value={editingPlayer.basePrice}
                       onChange={(e) => setEditingPlayer({ ...editingPlayer, basePrice: Number(e.target.value) })}
                       className="w-full h-11 bg-slate-950 border border-white/10 rounded-xl pl-9 pr-3 text-slate-200 text-sm font-bold focus:outline-none focus:border-amber-500"
