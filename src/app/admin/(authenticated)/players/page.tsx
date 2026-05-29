@@ -172,14 +172,14 @@ export default function PlayersAdminPage() {
   // Form Submissions
   const handleCreatePlayerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!playerName || !playerPhone || !playerPlace) return;
+    if (!playerName || !playerPhone) return;
     createPlayerMutation.mutate({
       playerName,
       position: playerPosition,
       category: playerCategory,
       phoneNumber: playerPhone,
-      age: playerAge,
-      place: playerPlace,
+      age: playerAge || undefined,
+      place: playerPlace || undefined,
       basePrice: playerBasePrice,
       photo: playerPhoto || undefined,
     });
@@ -280,6 +280,7 @@ export default function PlayersAdminPage() {
             <option value="ICON">ICON</option>
             <option value="YOUNG">YOUNG</option>
             <option value="LEGEND">LEGEND</option>
+            <option value="GENERAL">GENERAL</option>
           </select>
 
           {/* Filter Status */}
@@ -520,6 +521,7 @@ export default function PlayersAdminPage() {
                     <option value="ICON">ICON</option>
                     <option value="YOUNG">YOUNG</option>
                     <option value="LEGEND">LEGEND</option>
+                    <option value="GENERAL">GENERAL</option>
                   </select>
                 </div>
               </div>
@@ -534,7 +536,6 @@ export default function PlayersAdminPage() {
                     <Calendar className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
                     <input
                       type="number"
-                      required
                       min={15}
                       max={50}
                       value={playerAge || ''}
@@ -553,7 +554,6 @@ export default function PlayersAdminPage() {
                     <MapPin className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
                     <input
                       type="text"
-                      required
                       placeholder="e.g. Malappuram"
                       value={playerPlace}
                       onChange={(e) => setPlayerPlace(e.target.value)}
@@ -727,6 +727,7 @@ export default function PlayersAdminPage() {
                     <option value="ICON">ICON</option>
                     <option value="YOUNG">YOUNG</option>
                     <option value="LEGEND">LEGEND</option>
+                    <option value="GENERAL">GENERAL</option>
                   </select>
                 </div>
               </div>
@@ -741,10 +742,9 @@ export default function PlayersAdminPage() {
                     <Calendar className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
                     <input
                       type="number"
-                      required
                       min={15}
                       max={50}
-                      value={editingPlayer.age}
+                      value={editingPlayer.age || ''}
                       onChange={(e) => setEditingPlayer({ ...editingPlayer, age: Number(e.target.value) })}
                       className="w-full h-11 bg-slate-950 border border-white/10 rounded-xl pl-9 pr-3 text-slate-200 text-sm font-medium focus:outline-none focus:border-amber-500"
                     />
@@ -760,8 +760,7 @@ export default function PlayersAdminPage() {
                     <MapPin className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
                     <input
                       type="text"
-                      required
-                      value={editingPlayer.place}
+                      value={editingPlayer.place || ''}
                       onChange={(e) => setEditingPlayer({ ...editingPlayer, place: e.target.value })}
                       className="w-full h-11 bg-slate-950 border border-white/10 rounded-xl pl-9 pr-3 text-slate-200 text-sm font-medium focus:outline-none focus:border-amber-500"
                     />

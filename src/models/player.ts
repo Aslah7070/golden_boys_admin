@@ -8,7 +8,7 @@ export type PlayerPosition =
   | 'RIGHT_WING'
   | 'STRIKER';
 
-export type PlayerCategory = 'GK' | 'ICON' | 'YOUNG' | 'LEGEND';
+export type PlayerCategory = 'GK' | 'ICON' | 'YOUNG' | 'LEGEND' | 'GENERAL';
 
 export interface IPlayer extends Document {
   playerName: string;
@@ -45,7 +45,7 @@ const PlayerSchema: Schema<IPlayer> = new Schema(
       type: String,
       required: [true, 'Category is required'],
       enum: {
-        values: ['GK', 'ICON', 'YOUNG', 'LEGEND'],
+        values: ['GK', 'ICON', 'YOUNG', 'LEGEND', 'GENERAL'],
         message: '{VALUE} is not a valid player category',
       },
     },
@@ -55,11 +55,11 @@ const PlayerSchema: Schema<IPlayer> = new Schema(
     },
     age: {
       type: Number,
-      required: [true, 'Age is required'],
+      required: false,
     },
     place: {
       type: String,
-      required: [true, 'Place is required'],
+      required: false,
     },
     photo: {
       type: String,

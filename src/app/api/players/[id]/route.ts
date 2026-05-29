@@ -7,6 +7,24 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
+export async function GET(
+  request: NextRequest,
+  { params }: Props
+) {
+  try {
+    await connectToDatabase();
+    const { id } = await params;
+    const player = await Player.findById(id).populate('soldTo', 'teamName logo');
+    if (!player) {
+      return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+    }
+    return NextResponse.json(player);
+  } catch (error: unknown) {
+    const err = error as Error;
+    return NextResponse.json({ error: err.message || 'Failed to fetch player' }, { status: 500 });
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: Props
@@ -30,7 +48,7 @@ export async function PUT(
       soldTo,
     } = body;
 
-    if (!playerName || !position || !category || !phoneNumber || !age || !place || basePrice === undefined) {
+    if (!playerName || !position || !category || !phoneNumber || basePrice === undefined) {
       return NextResponse.json({ error: 'Core fields are required' }, { status: 400 });
     }
 
@@ -99,8 +117,8 @@ export async function PUT(
     player.position = position;
     player.category = category;
     player.phoneNumber = phoneNumber;
-    player.age = Number(age);
-    player.place = place;
+    player.age = age ? Number(age) : undefined;
+    player.place = place || undefined;
     player.photo = photo || '/players/default.png';
     player.basePrice = Number(basePrice);
 

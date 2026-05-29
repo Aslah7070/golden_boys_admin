@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
       basePrice,
     } = body;
 
-    if (!playerName || !position || !category || !phoneNumber || !age || !place || !basePrice) {
-      return NextResponse.json({ error: 'All fields (playerName, position, category, phoneNumber, age, place, basePrice) are required' }, { status: 400 });
+    if (!playerName || !position || !category || !phoneNumber || basePrice === undefined) {
+      return NextResponse.json({ error: 'Core fields (playerName, position, category, phoneNumber, basePrice) are required' }, { status: 400 });
     }
 
     const player = await Player.create({
@@ -67,8 +67,8 @@ export async function POST(request: NextRequest) {
       position,
       category,
       phoneNumber,
-      age,
-      place,
+      age: age ? Number(age) : undefined,
+      place: place || undefined,
       photo: photo || '/players/default.png',
       basePrice,
       soldPrice: 0,

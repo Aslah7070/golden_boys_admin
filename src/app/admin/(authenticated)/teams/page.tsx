@@ -275,7 +275,7 @@ export default function TeamsAdminPage() {
                 <div className="grid grid-cols-2 gap-2 bg-slate-950/40 border border-white/5 p-3 rounded-xl">
                   <div className="flex flex-col">
                     <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">PURSE BALANCE</span>
-                    <span className="text-sm font-black text-emerald-400 mt-0.5">₹{team.balance.toLocaleString('en-IN')}</span>
+                    <span className="text-sm font-black text-emerald-400 mt-0.5">₹{(2000 - team.totalSpent).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">TOTAL SPENT</span>

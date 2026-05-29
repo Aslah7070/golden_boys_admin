@@ -6,7 +6,7 @@ export type PlayerPosition =
   | 'RIGHT_WING'
   | 'STRIKER';
 
-export type PlayerCategory = 'GK' | 'ICON' | 'YOUNG' | 'LEGEND';
+export type PlayerCategory = 'GK' | 'ICON' | 'YOUNG' | 'LEGEND' | 'GENERAL';
 
 export interface Player {
   _id: string;

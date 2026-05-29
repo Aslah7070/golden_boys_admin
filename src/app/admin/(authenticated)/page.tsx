@@ -1,6 +1,37 @@
 'use client';
 
 import React, { useState } from 'react';
+import confetti from 'canvas-confetti';
+
+const triggerConfetti = () => {
+  const end = Date.now() + 3 * 1000; // 3 seconds
+  const colors = ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"];
+
+  const frame = () => {
+    if (Date.now() > end) return;
+
+    confetti({
+      particleCount: 2,
+      angle: 60,
+      spread: 55,
+      startVelocity: 60,
+      origin: { x: 0, y: 0.5 },
+      colors: colors,
+    });
+    confetti({
+      particleCount: 2,
+      angle: 120,
+      spread: 55,
+      startVelocity: 60,
+      origin: { x: 1, y: 0.5 },
+      colors: colors,
+    });
+
+    requestAnimationFrame(frame);
+  };
+
+  frame();
+};
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuctionStore } from '@/store/auctionStore';
 import { fetchTeams, fetchPlayers, buyPlayer } from '@/services/api';
@@ -66,6 +97,7 @@ export default function AdminPage() {
     mutationFn: buyPlayer,
     onSuccess: (data) => {
       showToast(`SUCCESS: Sold to ${data.teamName} for ₹${data.player.soldPrice.toLocaleString('en-IN')}!`, 'success');
+      triggerConfetti();
       queryClient.invalidateQueries();
       setBiddingPlayerId(null);
       setBiddingTeamId('');
@@ -74,6 +106,35 @@ export default function AdminPage() {
     onError: (error: any) => {
       setBiddingError(error.message || 'Transaction failed');
       showToast(error.message || 'Failed to complete sale.', 'error');
+    },
+  });
+
+  // Mutation - Unbid Player
+  const unbidMutation = useMutation({
+    mutationFn: async (player: any) => {
+      const res = await fetch(`/api/players/${player._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...player,
+          isSold: false,
+          soldPrice: 0,
+          soldTo: null
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to unbid player');
+      return data;
+    },
+    onSuccess: (data) => {
+      showToast(`SUCCESS: ${data.playerName || data.name} has been released!`, 'success');
+      queryClient.invalidateQueries();
+      setBiddingPlayerId(null);
+      setBiddingTeamId('');
+      setBiddingError('');
+    },
+    onError: (error: any) => {
+      showToast(error.message || 'Failed to release player.', 'error');
     },
   });
 
@@ -92,6 +153,12 @@ export default function AdminPage() {
 
     if (bidAmount < biddingPlayer.basePrice) {
       setBiddingError(`Bid must be at least base price ₹${biddingPlayer.basePrice.toLocaleString('en-IN')}`);
+      return;
+    }
+
+    const maxLimit = biddingPlayer.category === 'ICON' ? 500 : 2000;
+    if (bidAmount > maxLimit) {
+      setBiddingError(`Bid cannot exceed maximum price of ₹${maxLimit.toLocaleString('en-IN')} for ${biddingPlayer.category} category.`);
       return;
     }
 
@@ -221,6 +288,7 @@ export default function AdminPage() {
                 <option value="ICON">ICON</option>
                 <option value="YOUNG">YOUNG</option>
                 <option value="LEGEND">LEGEND</option>
+                <option value="GENERAL">GENERAL</option>
               </select>
             </div>
 
@@ -281,9 +349,12 @@ export default function AdminPage() {
                   </div>
                   <button
                     onClick={() => {
+                      const signedTeamId = player.isSold && player.soldTo
+                        ? (typeof player.soldTo === 'object' ? (player.soldTo as any)._id : player.soldTo)
+                        : '';
                       setBiddingPlayerId(player._id);
-                      setBiddingTeamId('');
-                      setBidAmount(player.basePrice);
+                      setBiddingTeamId(signedTeamId || '');
+                      setBidAmount(player.isSold ? (player.soldPrice || player.basePrice) : player.basePrice);
                       setBiddingError('');
                     }}
                     className={`rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
@@ -351,7 +422,10 @@ export default function AdminPage() {
                     >
                       <option value="">-- Select Purchaser Team --</option>
                       {teams?.map((team) => {
-                        const cannotAfford = selectedBiddingPlayer && team.balance < selectedBiddingPlayer.basePrice;
+                        const cannotAfford = selectedBiddingPlayer && 
+                          !selectedBiddingPlayer.isSold && 
+                          team._id !== biddingTeamId &&
+                          team.balance < selectedBiddingPlayer.basePrice;
                         return (
                           <option 
                             key={team._id} 
@@ -371,46 +445,64 @@ export default function AdminPage() {
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2">
                     Final Sold Price (₹)
-                      </label>
-                      <input
-                        type="number"
-                        min={selectedBiddingPlayer?.basePrice || 0}
-                        step={500}
-                        value={bidAmount || ''}
-                        onChange={(e) => setBidAmount(Number(e.target.value))}
-                        required
-                        className="w-full h-11 bg-slate-950 border border-white/10 rounded-xl px-3 text-slate-200 text-sm font-black focus:outline-none focus:border-amber-500 transition-colors"
-                      />
-                    </div>
+                  </label>
+                  <input
+                    type="number"
+                    min={selectedBiddingPlayer?.basePrice || 50}
+                    max={selectedBiddingPlayer?.category === 'ICON' ? 500 : 2000}
+                    step={1}
+                    value={bidAmount || ''}
+                    onChange={(e) => setBidAmount(Number(e.target.value))}
+                    required
+                    className="w-full h-11 bg-slate-950 border border-white/10 rounded-xl px-3 text-slate-200 text-sm font-black focus:outline-none focus:border-amber-500 transition-colors"
+                  />
+                </div>
 
-                    {/* Error Alerts */}
-                    {biddingError && (
-                      <div className="p-3 bg-rose-950/30 border border-rose-500/20 rounded-xl text-[10px] text-rose-300 flex items-start gap-2">
-                        <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
-                        <span className="font-semibold leading-relaxed">{biddingError}</span>
-                      </div>
-                    )}
+                {/* Error Alerts */}
+                {biddingError && (
+                  <div className="p-3 bg-rose-950/30 border border-rose-500/20 rounded-xl text-[10px] text-rose-300 flex items-start gap-2">
+                    <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="font-semibold leading-relaxed">{biddingError}</span>
+                  </div>
+                )}
 
                     {/* Action buttons */}
-                    <div className="flex gap-2.5 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBiddingPlayerId(null);
-                          setBiddingTeamId('');
-                          setBiddingError('');
-                        }}
-                        className="flex-1 h-11 rounded-xl bg-slate-900 border border-white/5 hover:bg-slate-800 text-xs font-bold text-slate-400 hover:text-white transition-all"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={buyMutation.isPending || !biddingTeamId}
-                        className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-black text-slate-950 shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {buyMutation.isPending ? 'Saving Bid...' : 'Confirm Sale'}
-                      </button>
+                    <div className="flex flex-col gap-2.5 pt-2">
+                      <div className="flex gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBiddingPlayerId(null);
+                            setBiddingTeamId('');
+                            setBiddingError('');
+                          }}
+                          className="flex-1 h-11 rounded-xl bg-slate-900 border border-white/5 hover:bg-slate-800 text-xs font-bold text-slate-400 hover:text-white transition-all"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={buyMutation.isPending || !biddingTeamId}
+                          className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-black text-slate-950 shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {buyMutation.isPending ? 'Saving Bid...' : 'Confirm Sale'}
+                        </button>
+                      </div>
+
+                      {selectedBiddingPlayer?.isSold && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to release "${selectedBiddingPlayer.playerName || selectedBiddingPlayer.name}"?\nThis will refund the team and make the player UNSOLD.`)) {
+                              unbidMutation.mutate(selectedBiddingPlayer);
+                            }
+                          }}
+                          disabled={unbidMutation.isPending}
+                          className="w-full h-11 rounded-xl bg-red-950/20 border border-red-900/60 hover:bg-red-900/20 text-xs font-black text-red-400 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          {unbidMutation.isPending ? 'Releasing...' : 'Release Player'}
+                        </button>
+                      )}
                     </div>
                   </form>
                 )}
